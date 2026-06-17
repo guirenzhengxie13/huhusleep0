@@ -1,0 +1,14 @@
+huhusleep2/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.streamlit/
+.run_logs/
+.vscode/
+data_status/
+runtime_test/
+logs/
+data/
+output/
+raw_archive/
+*.log

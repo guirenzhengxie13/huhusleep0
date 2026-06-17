@@ -1,0 +1,13 @@
+{
+  "mode": "network_share_test",
+  "reference_project_root": "huhusleep2",
+  "workspace_root": "\\\\TAIHU\\public\\公共\\步步安_呼呼睡持续跟踪\\呼呼睡持续跟踪\\备份",
+  "import_dir": "\\\\TAIHU\\public\\公共\\步步安_呼呼睡持续跟踪\\呼呼睡持续跟踪\\备份\\data import",
+  "runtime_root": "runtime_test",
+  "data_root": "runtime_test/data",
+  "archive_dir": "runtime_test/raw_archive",
+  "output_root": "runtime_test/output",
+  "log_dir": "runtime_test/logs",
+  "pipeline_index_dir": "runtime_test/pipeline_index",
+  "config_path": "config.json"
+}
