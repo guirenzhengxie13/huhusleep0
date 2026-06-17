@@ -68,6 +68,7 @@ def render_import_tab(config):
         "data_root": config.get("data_root"),
         "output_root": config.get("output_root"),
         "log_dir": config.get("log_dir"),
+        "delete_import_after_success": config.get("delete_import_after_success"),
         "config_path": config.get("config_path"),
     })
 

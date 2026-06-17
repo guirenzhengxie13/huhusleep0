@@ -9,5 +9,6 @@
   "output_root": "runtime_test/output",
   "log_dir": "runtime_test/logs",
   "pipeline_index_dir": "runtime_test/pipeline_index",
+  "delete_import_after_success": true,
   "config_path": "config.json"
 }

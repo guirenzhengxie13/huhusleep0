@@ -231,6 +231,96 @@ def _sort_and_dedupe_timeline_file(path: str) -> None:
             writer.writerow((row + [""] * len(TIMELINE_HEADER))[:len(TIMELINE_HEADER)])
 
 
+def _is_path_inside(path: str | os.PathLike[str], root: str | os.PathLike[str]) -> bool:
+    try:
+        path_abs = os.path.abspath(os.fspath(path))
+        root_abs = os.path.abspath(os.fspath(root))
+        return os.path.commonpath([path_abs, root_abs]) == root_abs
+    except (OSError, ValueError):
+        return False
+
+
+def _delete_processed_import_files(
+    source_paths: Iterable[str],
+    *,
+    import_dir: str,
+    run_id: str,
+    server_config: Dict[str, Any],
+    progress_callback: ProgressCallback | None,
+) -> tuple[List[str], List[Dict[str, str]]]:
+    deleted: List[str] = []
+    errors: List[Dict[str, str]] = []
+    source_path_list = sorted({str(path) for path in source_paths if path})
+
+    if not source_path_list:
+        return deleted, errors
+
+    _emit(
+        progress_callback,
+        phase="cleanup_import",
+        progress=96,
+        message=f"删除已成功处理的 data import 源文件 {len(source_path_list)} 个",
+        detail={"source_file_count": len(source_path_list)},
+    )
+
+    index_rows = []
+    for source_path in source_path_list:
+        if not _is_path_inside(source_path, import_dir):
+            message = "源文件不在 import_dir 下，跳过删除"
+            errors.append({"file": source_path, "reason": message})
+            index_rows.append(file_index_row(
+                run_id=run_id,
+                stage="import_cleanup",
+                role="source",
+                action="delete_after_success",
+                file_path=source_path,
+                status="warning",
+                message=message,
+                managed_root=import_dir,
+                readonly=True,
+            ))
+            continue
+
+        try:
+            os.remove(source_path)
+            deleted.append(source_path)
+            index_rows.append(file_index_row(
+                run_id=run_id,
+                stage="import_cleanup",
+                role="source",
+                action="delete_after_success",
+                file_path=source_path,
+                status="deleted",
+                message="处理成功后已删除，避免重复解析",
+                managed_root=import_dir,
+                readonly=False,
+            ))
+        except OSError as exc:
+            message = str(exc)
+            errors.append({"file": source_path, "reason": message})
+            index_rows.append(file_index_row(
+                run_id=run_id,
+                stage="import_cleanup",
+                role="source",
+                action="delete_after_success",
+                file_path=source_path,
+                status="error",
+                message=message,
+                managed_root=import_dir,
+                readonly=False,
+            ))
+
+    append_file_rows(index_rows, server_config)
+    _emit(
+        progress_callback,
+        phase="cleanup_import",
+        progress=97,
+        message=f"data import 清理完成：删除 {len(deleted)} 个，失败 {len(errors)} 个",
+        detail={"deleted": len(deleted), "errors": errors},
+    )
+    return deleted, errors
+
+
 def _open_timeline_writer(
     writers: Dict[str, Any],
     output_path: str,
@@ -617,7 +707,18 @@ def run_import_and_split(
             server_config,
         )
 
-        _emit(progress_callback, phase="summary", progress=97, message="汇总 timeline 输出结果")
+        deleted_import_files: List[str] = []
+        import_cleanup_errors: List[Dict[str, str]] = []
+        if server_config.get("delete_import_after_success", False):
+            deleted_import_files, import_cleanup_errors = _delete_processed_import_files(
+                (result["source_path"] for result in results),
+                import_dir=str(server_config["import_dir"]),
+                run_id=run_id,
+                server_config=server_config,
+                progress_callback=progress_callback,
+            )
+
+        _emit(progress_callback, phase="summary", progress=98, message="汇总 timeline 输出结果")
         timeline_summary = get_split_result_summary()
         summary = {
             "run_id": run_id,
@@ -630,13 +731,19 @@ def run_import_and_split(
             "timeline_dirs": timeline_summary,
             "staging_dir": "",
             "runtime_config_path": "",
+            "deleted_import_files": len(deleted_import_files),
+            "import_cleanup_errors": import_cleanup_errors,
             "direct_stats": {key: value for key, value in direct_stats.items() if key != "output_files"},
         }
         _emit(
             progress_callback,
             phase="finished",
             progress=100,
-            message="只读分割完成，没有复制或转移原始 CSV",
+            message=(
+                "只读分割完成，已清理成功处理的 data import 源文件"
+                if server_config.get("delete_import_after_success", False)
+                else "只读分割完成，没有复制或转移原始 CSV"
+            ),
             running=False,
             detail=summary,
         )
