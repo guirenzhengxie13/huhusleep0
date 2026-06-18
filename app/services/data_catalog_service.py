@@ -9,11 +9,9 @@ from typing import Any, Callable, Dict, Iterable, List, Sequence
 
 import pandas as pd
 
-from app.services.settings_service import PROJECT_ROOT
+from app.services.settings_service import PROJECT_ROOT, load_server_config
 
 
-CATALOG_DIR = PROJECT_ROOT / "data_status"
-CATALOG_CSV_PATH = CATALOG_DIR / "data_catalog.csv"
 DEFAULT_BACKUP_BAT = PROJECT_ROOT / "route" / "databackup.bat"
 
 ProgressCallback = Callable[[str], None]
@@ -56,6 +54,18 @@ CATALOG_COLUMNS = [
     "indexed_at",
     "readonly",
 ]
+
+
+def catalog_dir() -> Path:
+    config = load_server_config()
+    return Path(config.get("data_catalog_dir") or Path(config["workspace_root"]) / "data_status")
+
+
+def catalog_csv_path() -> Path:
+    return catalog_dir() / "data_catalog.csv"
+
+
+CATALOG_CSV_PATH = catalog_csv_path()
 
 
 def _read_batch_text(path: Path) -> str:
@@ -434,8 +444,9 @@ def rebuild_data_catalog(
                 progress_callback=progress_callback,
             ))
 
-    CATALOG_DIR.mkdir(exist_ok=True)
-    with CATALOG_CSV_PATH.open("w", encoding="utf-8-sig", newline="") as f:
+    path = catalog_csv_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=CATALOG_COLUMNS)
         writer.writeheader()
         for row in rows:
@@ -445,9 +456,10 @@ def rebuild_data_catalog(
 
 
 def load_data_catalog() -> pd.DataFrame:
-    if not CATALOG_CSV_PATH.exists():
+    path = catalog_csv_path()
+    if not path.exists():
         return pd.DataFrame(columns=CATALOG_COLUMNS)
-    return pd.read_csv(CATALOG_CSV_PATH, encoding="utf-8-sig", dtype=str).fillna("")
+    return pd.read_csv(path, encoding="utf-8-sig", dtype=str).fillna("")
 
 
 def catalog_summary(df: pd.DataFrame | None = None) -> List[Dict[str, Any]]:

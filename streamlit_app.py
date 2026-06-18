@@ -256,7 +256,7 @@ def render_data_status_tab():
 
 def render_pipeline_index_tab():
     st.subheader("流程索引")
-    st.caption("记录本工具流程读取的源文件和生成的测试输出；历史备份目录只读，不在这里标记为可删除。")
+    st.caption("记录本工具在当前备份测试库中读取、生成和清理的文件；真实历史库仍只读用于查看。")
 
     summary = pipeline_index_summary()
     top_left, top_mid, top_right = st.columns(3)

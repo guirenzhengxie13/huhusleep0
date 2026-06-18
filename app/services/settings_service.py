@@ -35,8 +35,12 @@ def load_server_config() -> Dict[str, Any]:
 
     data.setdefault("reference_project_root", "huhusleep2")
     data.setdefault("config_path", "config.json")
-    data.setdefault("runtime_root", "runtime_test")
-    data.setdefault("pipeline_index_dir", "runtime_test/pipeline_index")
+    workspace_root = data.get("workspace_root")
+    if not workspace_root:
+        raise KeyError("服务配置缺少 workspace_root，无法确定备份测试库路径")
+    data.setdefault("runtime_root", workspace_root)
+    data.setdefault("pipeline_index_dir", str(Path(workspace_root) / "pipeline_index"))
+    data.setdefault("data_catalog_dir", str(Path(workspace_root) / "data_status"))
     for key in (
         "runtime_root",
         "data_root",
@@ -44,6 +48,7 @@ def load_server_config() -> Dict[str, Any]:
         "output_root",
         "log_dir",
         "pipeline_index_dir",
+        "data_catalog_dir",
     ):
         if key in data and data[key]:
             data[key] = str(_resolve_from_project(data[key]))

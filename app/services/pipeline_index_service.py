@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable, List
 
 import pandas as pd
 
-from app.services.settings_service import PROJECT_ROOT, load_server_config
+from app.services.settings_service import load_server_config
 
 
 RUN_COLUMNS = [
@@ -50,7 +50,7 @@ FILE_COLUMNS = [
 
 def pipeline_index_dir(config: Dict[str, Any] | None = None) -> Path:
     config = config or load_server_config()
-    return Path(config.get("pipeline_index_dir") or PROJECT_ROOT / "runtime_test" / "pipeline_index")
+    return Path(config.get("pipeline_index_dir") or Path(config["workspace_root"]) / "pipeline_index")
 
 
 def runs_csv_path(config: Dict[str, Any] | None = None) -> Path:
